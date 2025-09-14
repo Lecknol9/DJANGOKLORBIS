@@ -1,0 +1,198 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lista de Cotizaciones - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'cotizaciones/css/style.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Lista</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:dashboard' %}">← Dashboard</a>
+      <a href="{% url 'home:panel_empleados' %}">Panel Principal</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Alerts -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">Lista de Cotizaciones</h1>
+      </div>
+      <div class="actions-right">
+        <a href="{% url 'cotizaciones:crear' %}" class="btn">
+          ➕ Nueva Cotización
+        </a>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters">
+      <form method="get" style="display: contents;">
+        <div class="filter-group">
+          <label for="busqueda">Buscar</label>
+          <input type="text" id="busqueda" name="busqueda" value="{{ busqueda }}" 
+                 placeholder="Número, cliente, referencia...">
+        </div>
+        
+        <div class="filter-group">
+          <label for="estado">Estado</label>
+          <select id="estado" name="estado">
+            <option value="">Todos los estados</option>
+            {% for estado_choice in estados %}
+              <option value="{{ estado_choice.0 }}" 
+                      {% if estado_choice.0 == estado_filtro %}selected{% endif %}>
+                {{ estado_choice.1 }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="cliente">Cliente</label>
+          <select id="cliente" name="cliente">
+            <option value="">Todos los clientes</option>
+            {% for cliente in clientes %}
+              <option value="{{ cliente.id }}" 
+                      {% if cliente.id|stringformat:"s" == cliente_filtro %}selected{% endif %}>
+                {{ cliente.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn">🔍 Filtrar</button>
+        </div>
+        
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">🗑️ Limpiar</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabla de Cotizaciones -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>Referencia</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Valor Total</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cotizacion in cotizaciones %}
+          <tr>
+            <td><strong>{{ cotizacion.numero }}</strong></td>
+            <td>{{ cotizacion.cliente.nombre }}</td>
+            <td>{{ cotizacion.referencia|truncatewords:5 }}</td>
+            <td>{{ cotizacion.tipo_trabajo.nombre }}</td>
+            <td>
+              <span class="pill {{ cotizacion.estado }}">
+                {{ cotizacion.get_estado_display }}
+              </span>
+            </td>
+            <td><strong>${{ cotizacion.valor_total|floatformat:0 }}</strong></td>
+            <td>{{ cotizacion.fecha_creacion|date:"d/m/Y" }}</td>
+            <td>
+              <div style="display: flex; gap: 4px;">
+                <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" 
+                   class="btn small secondary" title="Ver detalle">
+                  👁️
+                </a>
+                <a href="{% url 'cotizaciones:editar' cotizacion.pk %}" 
+                   class="btn small" title="Editar">
+                  ✏️
+                </a>
+                <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" 
+                   class="btn small warning" title="Ver PDF" target="_blank">
+                  📄
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--gris-600);">
+              {% if busqueda or estado_filtro or cliente_filtro %}
+                No se encontraron cotizaciones que coincidan con los filtros aplicados.
+                <br><br>
+                <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">Limpiar filtros</a>
+              {% else %}
+                No hay cotizaciones registradas aún.
+                <br><br>
+                <a href="{% url 'cotizaciones:crear' %}" class="btn">Crear Primera Cotización</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if cotizaciones.has_other_pages %}
+    <div class="pagination">
+      {% if cotizaciones.has_previous %}
+        <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">&laquo; Primera</a>
+        <a href="?page={{ cotizaciones.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">&lsaquo; Anterior</a>
+      {% endif %}
+      
+      <span class="current">
+        Página {{ cotizaciones.number }} de {{ cotizaciones.paginator.num_pages }}
+      </span>
+      
+      {% if cotizaciones.has_next %}
+        <a href="?page={{ cotizaciones.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">Siguiente &rsaquo;</a>
+        <a href="?page={{ cotizaciones.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">Última &raquo;</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Resumen de filtros aplicados -->
+    {% if busqueda or estado_filtro or cliente_filtro %}
+    <div class="card" style="margin-top: 20px;">
+      <h4>Filtros aplicados:</h4>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        {% if busqueda %}
+        <span class="pill enviada">Búsqueda: "{{ busqueda }}"</span>
+        {% endif %}
+        {% if estado_filtro %}
+        <span class="pill {{ estado_filtro }}">Estado: {{ estado_filtro|capfirst }}</span>
+        {% endif %}
+        {% if cliente_filtro %}
+        <span class="pill aprobada">Cliente: {{ cliente_nombre }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <script src="{% static 'cotizaciones/js/main.js' %}"></script>
+</body>
+</html>

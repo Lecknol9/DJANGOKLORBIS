@@ -1,0 +1,167 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'cotizaciones/css/style.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Dashboard</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'home:panel_empleados' %}">← Volver al Panel</a>
+      <a href="{% url 'admin:logout' %}">Cerrar Sesión</a>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h3>📋 Cotizaciones</h3>
+      <nav class="nav">
+        <a href="{% url 'cotizaciones:dashboard' %}" class="active">📊 Dashboard</a>
+        <a href="{% url 'cotizaciones:lista' %}">📄 Todas las Cotizaciones</a>
+        <a href="{% url 'cotizaciones:crear' %}">➕ Nueva Cotización</a>
+        <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
+        <a href="{% url 'cotizaciones:gestionar_clientes' %}">👥 Gestionar Clientes</a>
+        <a href="{% url 'cotizaciones:gestionar_servicios' %}">🔧 Gestionar Servicios</a>
+        <a href="{% url 'cotizaciones:gestionar_materiales' %}">📦 Gestionar Materiales</a>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+      <!-- KPIs -->
+      <div class="cards">
+        <div class="card">
+          <h4>Total Cotizaciones</h4>
+          <div class="kpi">{{ total_cotizaciones }}</div>
+          <div class="muted">Desde el inicio</div>
+        </div>
+        <div class="card">
+          <h4>Este Mes</h4>
+          <div class="kpi">{{ cotizaciones_mes }}</div>
+          <div class="muted">Cotizaciones creadas</div>
+        </div>
+        <div class="card">
+          <h4>Pendientes</h4>
+          <div class="kpi">{{ cotizaciones_pendientes }}</div>
+          <div class="muted">Esperando respuesta</div>
+        </div>
+        <div class="card">
+          <h4>Valor del Mes</h4>
+          <div class="kpi">${{ valor_total_mes|floatformat:0 }}</div>
+          <div class="muted">Total cotizado</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <div class="actions-left">
+          <h2 style="margin: 0; color: var(--azul-700);">Resumen General</h2>
+        </div>
+        <div class="actions-right">
+          <a href="{% url 'cotizaciones:crear' %}" class="btn">
+            ➕ Nueva Cotización
+          </a>
+          <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">
+            📄 Ver Todas
+          </a>
+        </div>
+      </div>
+
+      <!-- Grid de contenido -->
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <!-- Últimas Cotizaciones -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Valor Total</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cotizacion in ultimas_cotizaciones %}
+              <tr>
+                <td><strong>{{ cotizacion.numero }}</strong></td>
+                <td>{{ cotizacion.cliente.nombre }}</td>
+                <td>
+                  <span class="pill {{ cotizacion.estado }}">
+                    {{ cotizacion.get_estado_display }}
+                  </span>
+                </td>
+                <td>${{ cotizacion.valor_total|floatformat:0 }}</td>
+                <td>{{ cotizacion.fecha_creacion|date:"d/m/Y" }}</td>
+                <td>
+                  <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn small secondary">
+                    👁️ Ver
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                  No hay cotizaciones registradas aún.
+                  <br><br>
+                  <a href="{% url 'cotizaciones:crear' %}" class="btn">Crear Primera Cotización</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Estados de Cotizaciones -->
+        <div class="card">
+          <h3>Estados de Cotizaciones</h3>
+          {% for estado in estados_stats %}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span class="pill {{ estado.estado }}">
+              {{ estado.estado|capfirst }}
+            </span>
+            <strong>{{ estado.total }}</strong>
+          </div>
+          {% empty %}
+          <p style="color: var(--gris-600); text-align: center; padding: 20px;">
+            Sin datos disponibles
+          </p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Accesos Rápidos -->
+      <div class="card">
+        <h3>Accesos Rápidos</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+          <a href="{% url 'cotizaciones:gestionar_clientes' %}" class="btn secondary" style="text-align: center;">
+            👥 Gestionar Clientes
+          </a>
+          <a href="{% url 'cotizaciones:gestionar_servicios' %}" class="btn secondary" style="text-align: center;">
+            🔧 Catálogo de Servicios
+          </a>
+          <a href="{% url 'cotizaciones:gestionar_materiales' %}" class="btn secondary" style="text-align: center;">
+            📦 Catálogo de Materiales
+          </a>
+          <a href="#" class="btn secondary" style="text-align: center;">
+            🎯 Plantillas
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="{% static 'cotizaciones/js/main.js' %}"></script>
+</body>
+</html>

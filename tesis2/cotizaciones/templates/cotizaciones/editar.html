@@ -1,0 +1,427 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editar Cotización {{ cotizacion.numero }} - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'cotizaciones/css/style.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Editar {{ cotizacion.numero }}</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">👁️ Ver Cotización</a>
+      <a href="{% url 'cotizaciones:lista' %}">← Lista</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Alerts -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">
+          Editar Cotización {{ cotizacion.numero }}
+        </h1>
+        <span class="pill {{ cotizacion.estado }}">
+          {{ cotizacion.get_estado_display }}
+        </span>
+      </div>
+      <div class="actions-right">
+        <button type="button" class="btn success" onclick="guardarCotizacion()">
+          💾 Guardar Cambios
+        </button>
+        <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" class="btn warning" target="_blank">
+          📄 Ver PDF
+        </a>
+      </div>
+    </div>
+
+    <!-- Información Básica -->
+    <div class="card">
+      <h3>📋 Información Básica</h3>
+      <form method="post" id="cotizacion-form">
+        {% csrf_token %}
+        <div class="form-row">
+          <div class="form-group">
+            <label for="{{ form.cliente.id_for_label }}">Cliente *</label>
+            {{ form.cliente }}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.tipo_trabajo.id_for_label }}">Tipo de Trabajo *</label>
+            {{ form.tipo_trabajo }}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.referencia.id_for_label }}">Referencia *</label>
+          {{ form.referencia }}
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="{{ form.lugar.id_for_label }}">Lugar *</label>
+            {{ form.lugar }}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.fecha_vencimiento.id_for_label }}">Fecha Vencimiento</label>
+            {{ form.fecha_vencimiento }}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+          {{ form.observaciones }}
+        </div>
+      </form>
+    </div>
+
+    <!-- Servicios -->
+    <div class="card">
+      <h3>🔧 Servicios</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p style="margin: 0; color: var(--gris-600);">Agregar servicios a la cotización</p>
+        <button type="button" class="btn" onclick="mostrarModal('modal-servicio')">
+          ➕ Agregar Servicio
+        </button>
+      </div>
+      
+      <div class="table-wrap">
+        <table id="tabla-servicios">
+          <thead>
+            <tr>
+              <th>Servicio</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Subtotal</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items_servicio %}
+            <tr data-item-id="{{ item.id }}">
+              <td><strong>{{ item.servicio.nombre }}</strong></td>
+              <td>
+                {% if item.descripcion_personalizada %}
+                  {{ item.descripcion_personalizada|truncatewords:10 }}
+                {% else %}
+                  {{ item.servicio.descripcion|truncatewords:10 }}
+                {% endif %}
+              </td>
+              <td>{{ item.cantidad }} {{ item.servicio.unidad }}</td>
+              <td>${{ item.precio_unitario|floatformat:0 }}</td>
+              <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarItemServicio({{ item.id }})">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-servicios">
+              <td colspan="6" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay servicios agregados. Haz clic en "Agregar Servicio" para comenzar.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Materiales -->
+    <div class="card">
+      <h3>📦 Materiales</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p style="margin: 0; color: var(--gris-600);">Materiales necesarios para el trabajo</p>
+        <button type="button" class="btn" onclick="mostrarModal('modal-material')">
+          ➕ Agregar Material
+        </button>
+      </div>
+      
+      <div class="table-wrap">
+        <table id="tabla-materiales">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Subtotal</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items_material %}
+            <tr data-item-id="{{ item.id }}">
+              <td><strong>{{ item.material.codigo }} - {{ item.material.nombre }}</strong></td>
+              <td>
+                {% if item.descripcion_personalizada %}
+                  {{ item.descripcion_personalizada|truncatewords:10 }}
+                {% else %}
+                  {{ item.material.descripcion|truncatewords:10 }}
+                {% endif %}
+              </td>
+              <td>{{ item.cantidad }} {{ item.material.unidad }}</td>
+              <td>${{ item.precio_unitario|floatformat:0 }}</td>
+              <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarItemMaterial({{ item.id }})">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-materiales">
+              <td colspan="6" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay materiales agregados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mano de Obra -->
+    <div class="card">
+      <h3>👷 Mano de Obra</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p style="margin: 0; color: var(--gris-600);">Trabajo técnico y especializado</p>
+        <button type="button" class="btn" onclick="mostrarModal('modal-mano-obra')">
+          ➕ Agregar Mano de Obra
+        </button>
+      </div>
+      
+      <div class="table-wrap">
+        <table id="tabla-mano-obra">
+          <thead>
+            <tr>
+              <th>Descripción</th>
+              <th>Horas</th>
+              <th>Precio/Hora</th>
+              <th>Subtotal</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items_mano_obra %}
+            <tr data-item-id="{{ item.id }}">
+              <td>{{ item.descripcion }}</td>
+              <td>{{ item.horas }}</td>
+              <td>${{ item.precio_hora|floatformat:0 }}</td>
+              <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarItemManoObra({{ item.id }})">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-mano-obra">
+              <td colspan="5" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay trabajos de mano de obra agregados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Gastos de Traslado y Totales -->
+    <div class="card">
+      <h3>💰 Resumen Financiero</h3>
+      <div class="form-row" style="margin-bottom: 20px;">
+        <div class="form-group">
+          <label for="gastos-traslado">Gastos de Traslado</label>
+          <input 
+            type="number" 
+            id="gastos-traslado" 
+            value="{{ cotizacion.gastos_traslado|floatformat:0 }}"
+            step="1"
+            min="0"
+            onchange="actualizarGastosTraslado()"
+            style="padding:10px 12px; border:1px solid var(--gris-300); border-radius:8px;">
+        </div>
+        <div></div>
+      </div>
+
+      <div class="totales">
+        <div class="row">
+          <span>Subtotal Servicios:</span>
+          <span id="subtotal-servicios">${{ cotizacion.subtotal_servicios|floatformat:0 }}</span>
+        </div>
+        <div class="row">
+          <span>Subtotal Materiales:</span>
+          <span id="subtotal-materiales">${{ cotizacion.subtotal_materiales|floatformat:0 }}</span>
+        </div>
+        <div class="row">
+          <span>Subtotal Mano de Obra:</span>
+          <span id="subtotal-mano-obra">${{ cotizacion.subtotal_mano_obra|floatformat:0 }}</span>
+        </div>
+        <div class="row">
+          <span>Gastos de Traslado:</span>
+          <span id="display-gastos-traslado">${{ cotizacion.gastos_traslado|floatformat:0 }}</span>
+        </div>
+        <div class="row">
+          <span>Valor Neto:</span>
+          <span id="valor-neto">${{ cotizacion.valor_neto|floatformat:0 }}</span>
+        </div>
+        <div class="row">
+          <span>IVA (19%):</span>
+          <span id="valor-iva">${{ cotizacion.valor_iva|floatformat:0 }}</span>
+        </div>
+        <div class="row total">
+          <span>VALOR TOTAL:</span>
+          <span id="valor-total">${{ cotizacion.valor_total|floatformat:0 }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Servicio -->
+  <div id="modal-servicio" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Agregar Servicio</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-servicio')">&times;</button>
+      </div>
+      
+      <div class="form-group">
+        <label for="categoria-servicio">Categoría</label>
+        <select id="categoria-servicio" onchange="cargarServicios()">
+          <option value="">Seleccionar categoría</option>
+          {% for categoria in categorias_servicio %}
+          <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="servicio-select">Servicio</label>
+        <select id="servicio-select" onchange="cargarParametrosServicio()">
+          <option value="">Seleccionar servicio</option>
+        </select>
+      </div>
+      
+      <div id="parametros-servicio" class="parametros-container">
+        <!-- Parámetros dinámicos se cargan aquí -->
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cantidad-servicio">Cantidad</label>
+          <input type="number" id="cantidad-servicio" value="1" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label for="precio-servicio">Precio Unitario</label>
+          <input type="number" id="precio-servicio" step="0.01" min="0">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="descripcion-servicio">Descripción Personalizada</label>
+        <textarea id="descripcion-servicio" rows="3" placeholder="Descripción específica para este item (opcional)"></textarea>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" class="btn secondary" onclick="cerrarModal('modal-servicio')">Cancelar</button>
+        <button type="button" class="btn" onclick="agregarServicio()">Agregar Servicio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Material -->
+  <div id="modal-material" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Agregar Material</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-material')">&times;</button>
+      </div>
+      
+      <div class="form-group">
+        <label for="material-select">Material</label>
+        <select id="material-select" onchange="cargarPrecioMaterial()">
+          <option value="">Seleccionar material</option>
+          {% for material in materiales %}
+          <option value="{{ material.id }}" data-precio="{{ material.precio_unitario }}">
+            {{ material.codigo }} - {{ material.nombre }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cantidad-material">Cantidad</label>
+          <input type="number" id="cantidad-material" value="1" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label for="precio-material">Precio Unitario</label>
+          <input type="number" id="precio-material" step="0.01" min="0">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="descripcion-material">Descripción Personalizada</label>
+        <textarea id="descripcion-material" rows="3" placeholder="Descripción específica para este material (opcional)"></textarea>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" class="btn secondary" onclick="cerrarModal('modal-material')">Cancelar</button>
+        <button type="button" class="btn" onclick="agregarMaterial()">Agregar Material</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Mano de Obra -->
+  <div id="modal-mano-obra" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Agregar Mano de Obra</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-mano-obra')">&times;</button>
+      </div>
+      
+      <div class="form-group">
+        <label for="descripcion-mano-obra">Descripción del Trabajo</label>
+        <textarea id="descripcion-mano-obra" rows="3" placeholder="Describe el trabajo a realizar"></textarea>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="horas-mano-obra">Horas de Trabajo</label>
+          <input type="number" id="horas-mano-obra" step="0.5" min="0">
+        </div>
+        <div class="form-group">
+          <label for="precio-hora-mano-obra">Precio por Hora</label>
+          <input type="number" id="precio-hora-mano-obra" step="0.01" min="0">
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" class="btn secondary" onclick="cerrarModal('modal-mano-obra')">Cancelar</button>
+        <button type="button" class="btn" onclick="agregarManoObra()">Agregar Mano de Obra</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'cotizaciones/js/main.js' %}"></script>
+  <script>
+    // Variable global para el ID de cotización
+    window.cotizacionId = {{ cotizacion.pk }};
+  </script>
+</body>
+</html>

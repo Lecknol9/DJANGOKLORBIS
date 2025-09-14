@@ -1,0 +1,815 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de Usuarios - Gestión de Empleados</title>
+  <style>
+    :root{
+      --azul-900:#0a2342;
+      --azul-700:#174678;
+      --azul-600:#1f5fa5;
+      --azul-500:#2575c0;
+      --azul-100:#eaf3ff;
+      --blanco:#ffffff;
+      --gris-100:#f5f7fb;
+      --gris-300:#e2e8f0;
+      --gris-600:#4b5563;
+      --verde-600:#059669;
+      --rojo-600:#dc2626;
+      --naranja-600:#ea580c;
+      --shadow: 0 8px 20px rgba(10,35,66,.12);
+      --radius:16px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      color:#0b1220;
+      background: linear-gradient(180deg, var(--azul-100), #fff 40%);
+      min-height:100vh;
+    }
+
+    /* Header */
+    .topbar{
+      position: sticky;
+      top:0;
+      z-index:10;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:14px 20px;
+      background: linear-gradient(90deg, var(--azul-700), var(--azul-500));
+      color:var(--blanco);
+      box-shadow: var(--shadow);
+    }
+    .topbar .logo{
+      display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px;
+    }
+    .badge{
+      background: rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.35);
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:.78rem;
+    }
+    .spacer{flex:1}
+    .search{
+      max-width:380px; width:100%; position:relative;
+    }
+    .search input{
+      width:100%; padding:10px 12px;
+      border-radius:999px; border:1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.15); color:#fff; outline:none;
+    }
+    .search input::placeholder{color:rgba(255,255,255,.8)}
+    .user-menu{
+      display:flex; align-items:center; gap:10px;
+    }
+    .user-menu a{
+      color:#fff; text-decoration:none; padding:8px 12px; border-radius:8px;
+    }
+    .user-menu a:hover{background:rgba(255,255,255,.1)}
+
+    /* Layout */
+    .layout{
+      display:grid;
+      grid-template-columns: 240px 1fr;
+      gap:20px;
+      padding:20px;
+      min-height:calc(100vh - 80px);
+    }
+    @media (max-width: 900px){
+      .layout{grid-template-columns: 1fr}
+      .sidebar{order:2}
+    }
+
+    /* Sidebar */
+    .sidebar{
+      background: #fff;
+      border:1px solid var(--gris-300);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      height:fit-content;
+    }
+    .sidebar h3{
+      margin:0; padding:16px 16px; background: var(--azul-600); color:#fff;
+      font-size:1rem; letter-spacing:.3px;
+    }
+    .nav{
+      display:flex; flex-direction:column; padding:8px;
+    }
+    .nav a{
+      text-decoration:none; color:#0b1220;
+      padding:10px 12px; border-radius:12px;
+      display:flex; align-items:center; gap:10px;
+      transition:all .2s;
+    }
+    .nav a:hover{ background: var(--gris-100) }
+    .nav a.active{ background: var(--azul-100); color: var(--azul-600); font-weight:600 }
+
+    /* Main */
+    main{
+      display:flex; flex-direction:column; gap:16px;
+    }
+
+    /* Alerts */
+    .alert{
+      padding:12px 16px; border-radius:12px; border:1px solid;
+      display:flex; align-items:center; gap:8px;
+    }
+    .alert.success{background:#f0fdf4; border-color:#bbf7d0; color:#166534}
+    .alert.error{background:#fef2f2; border-color:#fecaca; color:#991b1b}
+    .alert.warning{background:#fffbeb; border-color:#fed7aa; color:#92400e}
+
+    /* Cards KPI */
+    .cards{
+      display:grid; grid-template-columns: repeat(4,1fr); gap:16px;
+    }
+    @media (max-width: 900px){ .cards{grid-template-columns: repeat(2,1fr)} }
+    @media (max-width: 600px){ .cards{grid-template-columns:1fr} }
+
+    .card{
+      background:#fff; border:1px solid var(--gris-300);
+      border-radius: var(--radius); padding:16px;
+      box-shadow: var(--shadow);
+    }
+    .card h4{ margin:6px 0 10px }
+    .kpi{ font-size:1.8rem; font-weight:800; color: var(--azul-700) }
+    .muted{ color: var(--gris-600); font-size:.9rem }
+
+    /* Actions */
+    .actions{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    }
+    .actions-left{display:flex; gap:8px; flex-wrap:wrap}
+    .actions-right{display:flex; gap:8px; flex-wrap:wrap}
+
+    /* Buttons */
+    .btn{
+      border:0; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
+      background: var(--azul-600); color:#fff;
+      box-shadow: var(--shadow);
+      text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+      transition:all .2s;
+    }
+    .btn:hover{transform:translateY(-1px); box-shadow: 0 12px 25px rgba(10,35,66,.15)}
+    .btn.secondary{
+      background:#fff; color: var(--azul-600);
+      border:1px solid var(--azul-600);
+    }
+    .btn.success{background:var(--verde-600)}
+    .btn.danger{background:var(--rojo-600)}
+    .btn.warning{background:var(--naranja-600)}
+    .btn.small{padding:6px 10px; font-size:.85rem}
+
+    /* Filters */
+    .filters{
+      background:#fff; border:1px solid var(--gris-300);
+      border-radius: var(--radius); padding:16px;
+      box-shadow: var(--shadow);
+      display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+    }
+    .filter-group{
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .filter-group label{font-size:.85rem; font-weight:600; color:var(--gris-600)}
+    .filter-group select, .filter-group input{
+      padding:8px 10px; border:1px solid var(--gris-300);
+      border-radius:8px; outline:none;
+    }
+
+    /* Table */
+    .table-wrap{
+      background:#fff; border:1px solid var(--gris-300);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      overflow:auto;
+    }
+    table{
+      width:100%; border-collapse:collapse; min-width:800px;
+    }
+    th, td{
+      padding:12px 14px; text-align:left; border-bottom:1px solid var(--gris-300);
+    }
+    thead th{
+      background: linear-gradient(0deg, var(--azul-100), #fff);
+      color: var(--azul-700); font-weight:700;
+      position:sticky; top:0; z-index:1;
+    }
+    tbody tr:hover{ background:#f9fbff }
+    .avatar{
+      width:32px; height:32px; border-radius:50%; background:var(--azul-100);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; color:var(--azul-600); font-size:.85rem;
+    }
+    .user-info{display:flex; align-items:center; gap:10px}
+
+    /* Status Pills */
+    .pill{
+      padding:6px 10px; border-radius:999px; font-size:.82rem;
+      border:1px solid; font-weight:600;
+    }
+    .pill.activo{ color:#0a7a2f; border-color:#a7e5b9; background:#e9f9ef }
+    .pill.inactivo{ color:#9b1c1c; border-color:#f3b0b0; background:#ffefef }
+
+    /* Cargo badges */
+    .cargo-admin{ background:#7c3aed; color:#fff }
+    .cargo-director{ background:#059669; color:#fff }
+    .cargo-gerente{ background:#0ea5e9; color:#fff }
+    .cargo-supervisor{ background:#ea580c; color:#fff }
+    .cargo-empleado{ background:#6b7280; color:#fff }
+
+    /* Modal */
+    .modal{
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center;
+    }
+    .modal.show{display:flex}
+    .modal-content{
+      background:#fff; border-radius:var(--radius); padding:24px;
+      max-width:500px; width:90%; max-height:90vh; overflow-y:auto;
+      box-shadow: var(--shadow);
+    }
+    .modal-header{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--gris-300);
+    }
+    .modal-header h3{margin:0; color:var(--azul-700)}
+    .close{
+      background:none; border:none; font-size:1.5rem; cursor:pointer;
+      color:var(--gris-600); padding:0; width:30px; height:30px;
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    /* Form */
+    .form-group{
+      display:flex; flex-direction:column; gap:6px; margin-bottom:16px;
+    }
+    .form-group label{font-weight:600; color:var(--gris-600)}
+    .form-group input, .form-group select, .form-group textarea{
+      padding:10px 12px; border:1px solid var(--gris-300);
+      border-radius:8px; outline:none;
+    }
+    .form-group input:focus, .form-group select:focus{
+      border-color:var(--azul-500); box-shadow:0 0 0 3px rgba(37,117,192,.1);
+    }
+    .form-row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    @media (max-width: 600px){.form-row{grid-template-columns:1fr}}
+
+    /* Pagination */
+    .pagination{
+      display:flex; justify-content:center; gap:8px; margin-top:20px;
+    }
+    .pagination a, .pagination span{
+      padding:8px 12px; border:1px solid var(--gris-300);
+      border-radius:8px; text-decoration:none; color:var(--azul-600);
+    }
+    .pagination .current{background:var(--azul-600); color:#fff; border-color:var(--azul-600)}
+
+    /* Loading */
+    .loading{
+      display:none; text-align:center; padding:40px;
+    }
+    .spinner{
+      border:3px solid var(--gris-300);
+      border-top:3px solid var(--azul-600);
+      border-radius:50%;
+      width:30px;
+      height:30px;
+      animation:spin 1s linear infinite;
+      margin:0 auto 10px;
+    }
+    @keyframes spin{0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)}}
+
+  </style>
+</head>
+<body>
+  <!-- Barra superior -->
+  <header class="topbar" role="banner">
+    <div class="logo" aria-label="Panel de Usuarios">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="white"/>
+      </svg>
+      Panel <span class="badge">Empleados</span>
+    </div>
+    <div class="spacer"></div>
+    <form class="search" role="search" method="GET">
+      <input type="search" name="q" placeholder="Buscar por nombre, email, cargo…" 
+             value="{{ request.GET.q }}" aria-label="Buscar empleados" />
+    </form>
+    <div class="user-menu">
+      <span>{{ user.get_full_name|default:user.username }}</span>
+      <a href="{% url 'panel_empleados' %}">🏠 Panel</a>
+      <a href="{% url 'logout' %}">🚪 Salir</a>
+    </div>
+  </header>
+
+  <!-- Contenido -->
+  <div class="layout" role="presentation">
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Navegación del panel">
+      <h3>Gestión</h3>
+      <nav class="nav">
+        <a class="active" href="{% url 'gestion_usuarios' %}">👥 Usuarios</a>
+        <a href="{% url 'panel_empleados' %}">📊 Dashboard</a>
+        <a href="#">⚙️ Configuración</a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main role="main">
+      <!-- Mensajes -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}">
+            {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% else %}⚠️{% endif %}
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- KPIs -->
+      <section class="cards" aria-label="Estadísticas">
+        <article class="card">
+          <div class="muted">Total Empleados</div>
+          <div class="kpi">{{ total_empleados }}</div>
+          <h4>Usuarios registrados</h4>
+        </article>
+        <article class="card">
+          <div class="muted">Activos</div>
+          <div class="kpi">{{ empleados_activos }}</div>
+          <h4>{{ porcentaje_activos }}% del total</h4>
+        </article>
+        <article class="card">
+          <div class="muted">Inactivos</div>
+          <div class="kpi">{{ empleados_inactivos }}</div>
+          <h4>Cuentas suspendidas</h4>
+        </article>
+        <article class="card">
+          <div class="muted">Nuevos (30d)</div>
+          <div class="kpi">{{ nuevos_mes }}</div>
+          <h4>Últimas incorporaciones</h4>
+        </article>
+      </section>
+
+      <!-- Filtros -->
+      <section class="filters">
+        <form method="GET" style="display:contents">
+          <div class="filter-group">
+            <label>Cargo</label>
+            <select name="cargo">
+              <option value="">Todos los cargos</option>
+              {% for cargo_key, cargo_label in cargos_choices %}
+                <option value="{{ cargo_key }}" {% if request.GET.cargo == cargo_key %}selected{% endif %}>
+                  {{ cargo_label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Estado</label>
+            <select name="activo">
+              <option value="">Todos</option>
+              <option value="1" {% if request.GET.activo == '1' %}selected{% endif %}>Activos</option>
+              <option value="0" {% if request.GET.activo == '0' %}selected{% endif %}>Inactivos</option>
+            </select>
+          </div>
+          <!-- Agrega el boton filtran, puede servir pero por ahora no hace nada xd
+          <div class="filter-group" style="align-self: end;">
+            <button type="submit" class="btn secondary" style="height: 38px;">🔍 Filtrar</button>
+          </div> -->
+          <div class="filter-group" style="align-self: end;">
+            <a href="{% url 'gestion_usuarios' %}" class="btn secondary" style="height: 38px; line-height: 22px;">🗑️ Limpiar</a>
+          </div>
+        </form>
+      </section>
+
+      <!-- Acciones -->
+      <section class="actions">
+        <div class="actions-left">
+          <button class="btn" onclick="openModal('crear')">➕ Nuevo Empleado</button>
+          <a href="{% url 'export_usuarios_csv' %}" class="btn secondary">📤 Exportar CSV</a>
+        </div>
+        <div class="actions-right">
+          <span class="muted">{{ empleados.count }} resultado(s)</span>
+        </div>
+      </section>
+
+      <!-- Loading -->
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Cargando...</p>
+      </div>
+
+      <!-- Tabla -->
+      <section class="table-wrap" aria-label="Tabla de empleados">
+        <table>
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Email</th>
+              <th>Cargo</th>
+              <th>Fecha Ingreso</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for perfil in empleados %}
+            <tr>
+              <td>
+                <div class="user-info">
+                  <div class="avatar">
+                    {{ perfil.user.first_name.0|default:perfil.user.username.0|upper }}
+                  </div>
+                  <div>
+                    <div><strong>{{ perfil.nombre_completo }}</strong></div>
+                    <div class="muted">@{{ perfil.user.username }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ perfil.user.email }}</td>
+              <td>
+                <span class="pill cargo-{{ perfil.cargo }}">
+                  {{ perfil.get_cargo_display }}
+                </span>
+              </td>
+              <td>{{ perfil.fecha_ingreso|date:"d/m/Y" }}</td>
+              <td>
+                <span class="pill {% if perfil.activo %}activo{% else %}inactivo{% endif %}">
+                  {% if perfil.activo %}✅ Activo{% else %}❌ Inactivo{% endif %}
+                </span>
+              </td>
+              <td>
+                <button class="btn small secondary" data-action="edit" data-user-id="{{ perfil.id }}">
+                  ✏️ Editar
+                </button>
+                {% if user.id != perfil.user.id %}
+                  {% if perfil.activo %}
+                    <button class="btn small warning" data-action="toggle" data-user-id="{{ perfil.id }}" data-status="false">
+                      🚫 Desactivar
+                    </button>
+                  {% else %}
+                    <button class="btn small success" data-action="toggle" data-user-id="{{ perfil.id }}" data-status="true">
+                      ✅ Activar
+                    </button>
+                  {% endif %}
+                  <button class="btn small danger" data-action="delete" data-user-id="{{ perfil.id }}">
+                    🗑️ Eliminar
+                  </button>
+                {% else %}
+                  <span class="muted">Tu cuenta</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px;">
+                <div class="muted">
+                  <h3>No se encontraron empleados</h3>
+                  <p>Intenta cambiar los filtros o crear un nuevo empleado.</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Paginación -->
+      {% if empleados.has_other_pages %}
+      <div class="pagination">
+        {% if empleados.has_previous %}
+          <a href="?page=1{{ url_params }}">&laquo; Primera</a>
+          <a href="?page={{ empleados.previous_page_number }}{{ url_params }}">‹ Anterior</a>
+        {% endif %}
+        
+        {% for num in empleados.paginator.page_range %}
+          {% if empleados.number == num %}
+            <span class="current">{{ num }}</span>
+          {% elif num > empleados.number|add:'-3' and num < empleados.number|add:'3' %}
+            <a href="?page={{ num }}{{ url_params }}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+        
+        {% if empleados.has_next %}
+          <a href="?page={{ empleados.next_page_number }}{{ url_params }}">Siguiente ›</a>
+          <a href="?page={{ empleados.paginator.num_pages }}{{ url_params }}">Última &raquo;</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </main>
+  </div>
+
+  <!-- Modal Crear/Editar Usuario -->
+  <div class="modal" id="userModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Nuevo Empleado</h3>
+        <button class="close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="userForm" method="POST">
+        {% csrf_token %}
+        <input type="hidden" id="userId" name="user_id" value="">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="username">Usuario*</label>
+            <input type="text" id="username" name="username" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email*</label>
+            <input type="email" id="email" name="email" required>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first_name">Nombre*</label>
+            <input type="text" id="first_name" name="first_name" required>
+          </div>
+          <div class="form-group">
+            <label for="last_name">Apellido*</label>
+            <input type="text" id="last_name" name="last_name" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Contraseña*</label>
+          <input type="password" id="password" name="password">
+          <small class="muted">Dejar vacío para mantener la contraseña actual (solo edición)</small>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cargo">Cargo*</label>
+            <select id="cargo" name="cargo" required>
+              {% for cargo_key, cargo_label in cargos_choices %}
+                <option value="{{ cargo_key }}">{{ cargo_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" id="telefono" name="telefono">
+          </div>
+        </div>
+                
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fecha_ingreso">Fecha Ingreso*</label>
+            <input type="date" id="fecha_ingreso" name="fecha_ingreso" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="salario">Salario</label>
+          <input type="number" id="salario" name="salario" step="1000">
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="activo" name="activo" checked>
+            Usuario activo
+          </label>
+        </div>
+        
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:20px;">
+          <button type="button" class="btn secondary" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Variables globales
+    let editingUserId = null;
+
+    // Funciones del modal
+    function openModal(action, userId = null) {
+      const modal = document.getElementById('userModal');
+      const title = document.getElementById('modalTitle');
+      const form = document.getElementById('userForm');
+      const userIdField = document.getElementById('userId');
+
+      if (action === 'crear') {
+        title.textContent = 'Nuevo Empleado';
+        form.reset();
+        userIdField.value = '';
+        document.getElementById('activo').checked = true;
+        document.getElementById('fecha_ingreso').value = new Date().toISOString().split('T')[0];
+      }
+
+      modal.classList.add('show');
+      editingUserId = userId;
+    }
+
+    function closeModal() {
+      document.getElementById('userModal').classList.remove('show');
+      editingUserId = null;
+    }
+
+    // Editar usuario
+    async function editUser(userId) {
+      try {
+        showLoading(true);
+        const response = await fetch(`/usuarios/api/get/${userId}/`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const user = data.user;
+          const perfil = data.perfil;
+
+          document.getElementById('modalTitle').textContent = 'Editar Empleado';
+          document.getElementById('userId').value = userId;
+          document.getElementById('username').value = user.username;
+          document.getElementById('email').value = user.email;
+          document.getElementById('first_name').value = user.first_name;
+          document.getElementById('last_name').value = user.last_name;
+          document.getElementById('cargo').value = perfil.cargo;
+          document.getElementById('fecha_ingreso').value = perfil.fecha_ingreso;
+          document.getElementById('telefono').value = perfil.telefono || '';
+          document.getElementById('salario').value = perfil.salario || '';
+          document.getElementById('activo').checked = perfil.activo;
+          document.getElementById('password').value = '';
+
+          openModal('editar', userId);
+        }
+      } catch (error) {
+        alert('Error al cargar los datos del usuario');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Cambiar estado del usuario
+    async function toggleUserStatus(userId, newStatus) {
+      const action = newStatus ? 'activar' : 'desactivar';
+      if (!confirm(`¿Estás seguro de ${action} este usuario?`)) return;
+
+      try {
+        showLoading(true);
+        const response = await fetch(`/usuarios/api/toggle-status/${userId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify({ activo: newStatus })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Error al cambiar el estado del usuario');
+        }
+      } catch (error) {
+        alert('Error de conexión');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Eliminar usuario
+    async function deleteUser(userId) {
+      if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')) return;
+
+      try {
+        showLoading(true);
+        const response = await fetch(`/usuarios/api/delete/${userId}/`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': getCsrfToken()
+          }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('Error al eliminar el usuario');
+        }
+      } catch (error) {
+        alert('Error de conexión');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Funciones auxiliares
+    function showLoading(show) {
+      const loading = document.getElementById('loading');
+      loading.style.display = show ? 'block' : 'none';
+    }
+
+    function getCsrfToken() {
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    // Event listeners cuando carga la página
+    document.addEventListener('DOMContentLoaded', function() {
+      // Envío del formulario
+      document.getElementById('userForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const userId = document.getElementById('userId').value;
+        const url = userId ? `/usuarios/api/update/${userId}/` : '/usuarios/api/create/';
+        
+        try {
+          showLoading(true);
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCsrfToken()
+            },
+            body: formData
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            closeModal();
+            location.reload();
+          } else {
+            alert(data.message || 'Error al guardar el usuario');
+          }
+        } catch (error) {
+          alert('Error de conexión');
+        } finally {
+          showLoading(false);
+        }
+      });
+      
+      // Event listeners para los botones de la tabla
+      document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        const userId = target.dataset.userId;
+
+        switch(action) {
+          case 'edit':
+            editUser(parseInt(userId));
+            break;
+          case 'toggle':
+            const status = target.dataset.status === 'true';
+            toggleUserStatus(parseInt(userId), status);
+            break;
+          case 'delete':
+            deleteUser(parseInt(userId));
+            break;
+        }
+      });
+
+      // Buscar en tiempo real
+      const searchInput = document.querySelector('.search input');
+      let searchTimeout;
+
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            this.closest('form').submit();
+          }, 500);
+        });
+      }
+
+      // Auto-submit filtros
+      document.querySelectorAll('.filters select').forEach(select => {
+        select.addEventListener('change', function() {
+          this.closest('form').submit();
+        });
+      });
+
+      // Ocultar loading inicial
+      showLoading(false);
+      
+      // Configurar fecha de hoy por defecto en el formulario
+      const fechaInput = document.getElementById('fecha_ingreso');
+      if (fechaInput && !fechaInput.value) {
+        fechaInput.value = new Date().toISOString().split('T')[0];
+      }
+    });
+
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    // Cerrar modal clickeando fuera
+    document.getElementById('userModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

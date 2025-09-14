@@ -1,0 +1,537 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Servicios - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'cotizaciones/css/style.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Servicios</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:dashboard' %}">← Dashboard</a>
+      <a href="{% url 'home:panel_empleados' %}">Panel Principal</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Alerts -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">Catálogo de Servicios</h1>
+      </div>
+      <div class="actions-right">
+        <button type="button" class="btn" onclick="mostrarModal('modal-servicio')">
+          ➕ Nuevo Servicio
+        </button>
+        <button type="button" class="btn secondary" onclick="mostrarModal('modal-categoria')">
+          🏷️ Nueva Categoría
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters">
+      <form method="get" style="display: contents;">
+        <div class="filter-group">
+          <label for="categoria">Categoría</label>
+          <select id="categoria" name="categoria">
+            <option value="">Todas las categorías</option>
+            {% for categoria in categorias %}
+              <option value="{{ categoria.id }}" 
+                      {% if categoria.id|stringformat:"s" == categoria_filtro %}selected{% endif %}>
+                {{ categoria.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="busqueda">Buscar Servicio</label>
+          <input type="text" id="busqueda" name="busqueda" value="{{ busqueda }}" 
+                 placeholder="Nombre, descripción...">
+        </div>
+        
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn">🔍 Filtrar</button>
+        </div>
+        
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <a href="{% url 'cotizaciones:gestionar_servicios' %}" class="btn secondary">🗑️ Limpiar</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabla de Servicios -->
+    <div class="table-wrap">
+      <table id="tabla-servicios">
+        <thead>
+          <tr>
+            <th>Servicio</th>
+            <th>Categoría</th>
+            <th>Precio Base</th>
+            <th>Unidad</th>
+            <th>Parametrizable</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for servicio in servicios %}
+          <tr>
+            <td>
+              <strong>{{ servicio.nombre }}</strong>
+              <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
+                {{ servicio.descripcion|truncatewords:15 }}
+              </div>
+            </td>
+            <td>
+              <span class="pill enviada">{{ servicio.categoria.nombre }}</span>
+            </td>
+            <td><strong>${{ servicio.precio_base|floatformat:0 }}</strong></td>
+            <td>{{ servicio.unidad }}</td>
+            <td>
+              {% if servicio.es_parametrizable %}
+                <span class="pill aprobada">Sí</span>
+              {% else %}
+                <span class="pill borrador">No</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="pill {% if servicio.activo %}activo{% else %}inactivo{% endif %}">
+                {% if servicio.activo %}Activo{% else %}Inactivo{% endif %}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 4px;">
+                <button type="button" class="btn small secondary" 
+                        onclick="verParametros({{ servicio.id }})" title="Ver parámetros">
+                  ⚙️
+                </button>
+                <button type="button" class="btn small secondary" 
+                        onclick="editarServicio({{ servicio.id }})" title="Editar">
+                  ✏️
+                </button>
+                <button type="button" class="btn small danger" 
+                        onclick="eliminarServicio({{ servicio.id }}, '{{ servicio.nombre }}')" title="Eliminar">
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
+              {% if categoria_filtro or busqueda %}
+                No se encontraron servicios que coincidan con los filtros aplicados.
+              {% else %}
+                No hay servicios registrados aún.
+              {% endif %}
+              <br><br>
+              <button type="button" class="btn" onclick="mostrarModal('modal-servicio')">
+                Crear Primer Servicio
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Categorías Existentes -->
+    <div class="card">
+      <h3>🏷️ Categorías de Servicios</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+        {% for categoria in categorias %}
+        <div style="background: var(--azul-100); padding: 12px; border-radius: 8px; border: 1px solid var(--azul-300);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="color: var(--azul-700);">{{ categoria.nombre }}</strong>
+            <span class="badge">{{ categoria.serviciobase_set.count }} servicios</span>
+          </div>
+          {% if categoria.descripcion %}
+          <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
+            {{ categoria.descripcion|truncatewords:10 }}
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: var(--gris-600);">
+          No hay categorías creadas aún.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="card">
+      <h3>📊 Estadísticas de Servicios</h3>
+      <div class="cards" style="margin: 0;">
+        <div class="card" style="margin: 0;">
+          <h4>Total Servicios</h4>
+          <div class="kpi">{{ servicios|length }}</div>
+          <div class="muted">Disponibles</div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h4>Parametrizables</h4>
+          <div class="kpi">{{ servicios_parametrizables|default:0 }}</div>
+          <div class="muted">Con configuración</div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h4>Categorías</h4>
+          <div class="kpi">{{ categorias|length }}</div>
+          <div class="muted">Organizadas</div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h4>Activos</h4>
+          <div class="kpi">{{ servicios_activos|default:0 }}</div>
+          <div class="muted">En uso</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Servicio -->
+  <div id="modal-servicio" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-servicio-titulo">Nuevo Servicio</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-servicio')">&times;</button>
+      </div>
+      
+      <form id="form-servicio">
+        {% csrf_token %}
+        <input type="hidden" id="servicio-id" value="">
+        
+        <div class="form-group">
+          <label for="servicio-categoria">Categoría *</label>
+          <select id="servicio-categoria" required>
+            <option value="">Seleccionar categoría</option>
+            {% for categoria in categorias %}
+            <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="servicio-nombre">Nombre del Servicio *</label>
+          <input type="text" id="servicio-nombre" required 
+                 placeholder="Ej: Instalación Bomba Sumergible">
+        </div>
+        
+        <div class="form-group">
+          <label for="servicio-descripcion">Descripción *</label>
+          <textarea id="servicio-descripcion" rows="3" required
+                    placeholder="Descripción detallada del servicio"></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="servicio-precio">Precio Base *</label>
+            <input type="number" id="servicio-precio" step="0.01" min="0" required
+                   placeholder="150000">
+          </div>
+          <div class="form-group">
+            <label for="servicio-unidad">Unidad *</label>
+            <input type="text" id="servicio-unidad" required
+                   placeholder="UND, MT, KG, etc.">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="servicio-parametrizable"> 
+            ¿Es parametrizable?
+          </label>
+          <small style="color: var(--gris-600);">
+            Permite configurar parámetros como potencia, voltaje, etc.
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="servicio-activo" checked> 
+            Servicio Activo
+          </label>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn secondary" onclick="cerrarModal('modal-servicio')">
+            Cancelar
+          </button>
+          <button type="submit" class="btn">
+            Guardar Servicio
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Nueva Categoría -->
+  <div id="modal-categoria" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nueva Categoría</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-categoria')">&times;</button>
+      </div>
+      
+      <form id="form-categoria">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="categoria-nombre">Nombre de la Categoría *</label>
+          <input type="text" id="categoria-nombre" required 
+                 placeholder="Ej: Equipo Sumergible, Sistema Eléctrico">
+        </div>
+        
+        <div class="form-group">
+          <label for="categoria-descripcion">Descripción</label>
+          <textarea id="categoria-descripcion" rows="3"
+                    placeholder="Descripción de la categoría (opcional)"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="categoria-orden">Orden de Visualización</label>
+          <input type="number" id="categoria-orden" min="0" value="0"
+                 placeholder="0 = Primera, 1 = Segunda, etc.">
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn secondary" onclick="cerrarModal('modal-categoria')">
+            Cancelar
+          </button>
+          <button type="submit" class="btn">
+            Crear Categoría
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Ver Parámetros -->
+  <div id="modal-parametros" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Parámetros del Servicio</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-parametros')">&times;</button>
+      </div>
+      
+      <div id="parametros-contenido">
+        <!-- Contenido dinámico de parámetros -->
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" class="btn secondary" onclick="cerrarModal('modal-parametros')">
+          Cerrar
+        </button>
+        <button type="button" class="btn" onclick="editarParametros()">
+          Editar Parámetros
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+  // Funciones específicas para gestión de servicios
+  async function editarServicio(servicioId) {
+    try {
+      // Cargar datos del servicio
+      const response = await fetch(`/cotizaciones/servicio/${servicioId}/`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // Cambiar título del modal
+        document.getElementById('modal-servicio-titulo').textContent = 'Editar Servicio';
+        document.getElementById('servicio-id').value = servicioId;
+        
+        // Llenar los campos con los datos existentes
+        document.getElementById('servicio-categoria').value = result.servicio.categoria_id;
+        document.getElementById('servicio-nombre').value = result.servicio.nombre;
+        document.getElementById('servicio-descripcion').value = result.servicio.descripcion;
+        document.getElementById('servicio-precio').value = result.servicio.precio_base;
+        document.getElementById('servicio-unidad').value = result.servicio.unidad;
+        document.getElementById('servicio-parametrizable').checked = result.servicio.es_parametrizable;
+        document.getElementById('servicio-activo').checked = result.servicio.activo;
+        
+        // Mostrar modal
+        mostrarModal('modal-servicio');
+      } else {
+        alert('Error al cargar los datos del servicio: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando servicio:', error);
+      alert('Error al cargar los datos del servicio');
+    }
+  }
+  
+  function verParametros(servicioId) {
+    // Cargar parámetros del servicio
+    const contenido = document.getElementById('parametros-contenido');
+    contenido.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <p>Cargando parámetros del servicio...</p>
+      </div>
+    `;
+    
+    mostrarModal('modal-parametros');
+    
+    // Simular carga de parámetros (aquí podrías hacer una petición AJAX real)
+    setTimeout(() => {
+      contenido.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Parámetro</th>
+                <th>Tipo</th>
+                <th>Requerido</th>
+                <th>Valor por Defecto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Potencia (HP)</td>
+                <td>Número</td>
+                <td>Sí</td>
+                <td>7.5</td>
+              </tr>
+              <tr>
+                <td>Voltaje</td>
+                <td>Selección</td>
+                <td>Sí</td>
+                <td>220V</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }, 1000);
+  }
+  
+  function editarParametros() {
+    alert('Función de edición de parámetros en desarrollo');
+    cerrarModal('modal-parametros');
+  }
+  
+  // Función específica para cerrar modal de servicio
+  function cerrarModalServicio() {
+    document.getElementById('modal-servicio-titulo').textContent = 'Nuevo Servicio';
+    document.getElementById('servicio-id').value = '';
+    document.getElementById('form-servicio').reset();
+    document.getElementById('servicio-parametrizable').checked = false;
+    document.getElementById('servicio-activo').checked = true;
+    
+    // Cerrar modal directamente
+    document.getElementById('modal-servicio').classList.remove('show');
+  }
+  
+  // Manejar envío del formulario de servicios
+  document.getElementById('form-servicio').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+      categoria_id: document.getElementById('servicio-categoria').value,
+      nombre: document.getElementById('servicio-nombre').value,
+      descripcion: document.getElementById('servicio-descripcion').value,
+      precio_base: document.getElementById('servicio-precio').value,
+      unidad: document.getElementById('servicio-unidad').value,
+      es_parametrizable: document.getElementById('servicio-parametrizable').checked,
+      activo: document.getElementById('servicio-activo').checked
+    };
+    
+    const servicioId = document.getElementById('servicio-id').value;
+    const isEditing = servicioId !== '';
+    
+    try {
+      const url = isEditing ? 
+        `/cotizaciones/servicio/${servicioId}/editar/` : 
+        '/cotizaciones/servicio/crear/';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModalServicio();
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error guardando servicio:', error);
+      alert('Error al guardar el servicio');
+    }
+  });
+  
+  // Manejar envío del formulario de categorías
+  document.getElementById('form-categoria').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+      nombre: document.getElementById('categoria-nombre').value,
+      descripcion: document.getElementById('categoria-descripcion').value,
+      orden: document.getElementById('categoria-orden').value
+    };
+    
+    try {
+      const response = await fetch('/cotizaciones/categoria-servicio/crear/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModal('modal-categoria');
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error guardando categoría:', error);
+      alert('Error al guardar la categoría');
+    }
+  });
+  
+  // Cambiar el comportamiento del botón cerrar del modal
+  document.querySelector('#modal-servicio .close').onclick = function() {
+    cerrarModalServicio();
+  };
+</script>
+</body>
+</html>
